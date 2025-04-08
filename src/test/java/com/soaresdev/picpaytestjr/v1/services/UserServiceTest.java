@@ -9,12 +9,17 @@ import jakarta.persistence.EntityExistsException;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -42,7 +47,7 @@ class UserServiceTest {
         userRepository.deleteAll();
         userRequestDto.setBalance(BigDecimal.ONE);
         userRequestDto.setCpfCnpj(VALID_CPF);
-        userRequestDto.setEmail("john.doe@gmail.com");
+        userRequestDto.setEmail("john.doe@testing.com");
         userRequestDto.setFullName("John Doe");
         userRequestDto.setPassword("the-strongest-password");
     }
@@ -110,5 +115,21 @@ class UserServiceTest {
         Throwable e = assertThrows(InvalidUserTypeException.class,
                 () -> userService.createUser(userRequestDto));
         assertEquals("Invalid CPF/CNPJ", e.getMessage());
+    }
+
+    @Test
+    void shouldFindAllUsers() {
+        UserResponseDto userOne = userService.createUser(userRequestDto);
+        UserResponseDto userTwo = userService.createUser(new UserRequestDto(BigDecimal.TEN, VALID_CNPJ, "seller@testing.com", "The Test", "testing123"));
+        Pageable pageable = PageRequest.of(0, 2, Sort.by("fullName"));
+
+        Page<UserResponseDto> result = userService.getAllUsers(pageable);
+
+        assertThat(result.getTotalPages()).isEqualTo(1);
+        assertThat(result.getNumber()).isZero();
+        assertThat(result.getTotalElements()).isEqualTo(2);
+        assertThat(result.getContent()).usingRecursiveComparison().
+                withComparatorForType(BigDecimal::compareTo, BigDecimal.class).
+                isEqualTo(List.of(userOne, userTwo));
     }
 }
