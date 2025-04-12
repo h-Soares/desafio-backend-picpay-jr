@@ -2,12 +2,13 @@ package com.soaresdev.picpaytestjr;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.web.config.EnableSpringDataWebSupport;
 
 @SpringBootApplication
-public class PicpayTestJrApplication {
+@EnableSpringDataWebSupport(pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)
+public class PicPayTestJrApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(PicpayTestJrApplication.class, args);
+        SpringApplication.run(PicPayTestJrApplication.class, args);
     }
-
 }
