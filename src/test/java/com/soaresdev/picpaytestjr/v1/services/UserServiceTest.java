@@ -6,6 +6,7 @@ import com.soaresdev.picpaytestjr.repositories.UserRepository;
 import com.soaresdev.picpaytestjr.v1.dtos.UserRequestDto;
 import com.soaresdev.picpaytestjr.v1.dtos.UserResponseDto;
 import jakarta.persistence.EntityExistsException;
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -123,7 +124,7 @@ class UserServiceTest {
         UserResponseDto userTwo = userService.createUser(new UserRequestDto(BigDecimal.TEN, VALID_CNPJ, "seller@testing.com", "The Test", "testing123"));
         Pageable pageable = PageRequest.of(0, 2, Sort.by("fullName"));
 
-        Page<UserResponseDto> result = userService.getAllUsers(pageable);
+        Page<UserResponseDto> result = userService.findAll(pageable);
 
         assertThat(result.getTotalPages()).isEqualTo(1);
         assertThat(result.getNumber()).isZero();
@@ -131,5 +132,23 @@ class UserServiceTest {
         assertThat(result.getContent()).usingRecursiveComparison().
                 withComparatorForType(BigDecimal::compareTo, BigDecimal.class).
                 isEqualTo(List.of(userOne, userTwo));
+    }
+
+    @Test
+    void shouldFindUserByEmail() {
+        UserResponseDto userCreated = userService.createUser(userRequestDto);
+
+        UserResponseDto userResult = userService.findUserByEmail(userRequestDto.getEmail());
+
+        assertThat(userResult).usingRecursiveComparison().
+                withComparatorForType(BigDecimal::compareTo, BigDecimal.class).
+                isEqualTo(userCreated);
+    }
+
+    @Test
+    void shouldThrowEntityNotFoundExceptionWhenEmailDoesNotExist() {
+        Throwable e = assertThrows(EntityNotFoundException.class,
+                () -> userService.findUserByEmail(userRequestDto.getEmail()));
+        assertEquals("User not found", e.getMessage());
     }
 }

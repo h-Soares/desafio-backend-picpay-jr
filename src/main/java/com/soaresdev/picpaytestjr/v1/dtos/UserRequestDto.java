@@ -7,14 +7,14 @@ import java.util.Objects;
 
 public class UserRequestDto {
     private static final String NAME_REGEX = "^(?!.*[#@!0-9])[A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+){0,10}$";
-    private static final String PASSWORD_REGEX = "/^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d!@#$%^&*()\\-_=+{}\\[\\]|\\\\:;\"'<>,.?\\/`~]{6,}$/";
+    private static final String PASSWORD_REGEX = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d !@#$%^&*()\\-_=+{}\\[\\]|\\\\:;\"'<>,.?\\/`~]{6,}$";
 
     @NotNull(message = "Name can not be null")
     @Size(min = 2, max = 100, message = "Name must be between 2 and 100 characters")
     @Pattern(regexp = NAME_REGEX, message = "Invalid name")
     private String fullName;
 
-    @Pattern(regexp = RegexUtils.CPF_REGEX + "|" + RegexUtils.CNPJ_REGEX, message = "Invalid CPF/CNPJ")
+    @Pattern(regexp = RegexUtils.CPF_OR_CNPJ_REGEX, message = "Invalid CPF/CNPJ")
     private String cpfCnpj;
 
     @NotBlank(message = "Email can not be null or empty")

@@ -8,6 +8,7 @@ import com.soaresdev.picpaytestjr.utils.RegexUtils;
 import com.soaresdev.picpaytestjr.v1.dtos.UserRequestDto;
 import com.soaresdev.picpaytestjr.v1.dtos.UserResponseDto;
 import jakarta.persistence.EntityExistsException;
+import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -36,8 +37,17 @@ public class UserService {
         return userResponseDto;
     }
 
-    public Page<UserResponseDto> getAllUsers(Pageable pageable) {
+    public Page<UserResponseDto> findAll(Pageable pageable) {
+        logger.info("Finding all users...");
         return userRepository.findAll(pageable).map(UserResponseDto::new);
+    }
+
+    public UserResponseDto findUserByEmail(String email) {
+        logger.info("Finding user by email: {}...", email);
+        UserResponseDto user = userRepository.findByEmail(email).map(UserResponseDto::new).
+                orElseThrow(() -> new EntityNotFoundException("User not found"));
+        logger.info("User found: {}", user);
+        return user;
     }
 
     private void validateOnDatabase(UserRequestDto userRequestDto) {
@@ -48,6 +58,15 @@ public class UserService {
         if(userRepository.existsByEmail(userRequestDto.getEmail()))
             throw new EntityExistsException("User email already exists");
         logger.info("User request successfully validated on database");
+    }
+
+    private User convertRequestDtoToUser(UserRequestDto userRequestDto) {
+        UserType userType = determineUserType(userRequestDto.getCpfCnpj());
+        userRequestDto.setPassword(passwordEncoder.encode(userRequestDto.getPassword()));
+        userRequestDto.setCpfCnpj(userRequestDto.getCpfCnpj().replaceAll("[./-]", ""));
+        return new User(userRequestDto.getBalance(), userRequestDto.getCpfCnpj(),
+                userRequestDto.getEmail(), userRequestDto.getFullName(),
+                userRequestDto.getPassword(), userType.getCode());
     }
 
     private UserType determineUserType(String cpfCnpj) {
@@ -61,13 +80,5 @@ public class UserService {
             throw new InvalidUserTypeException("Invalid CPF/CNPJ");
         logger.info("CPF/CNPJ successfully determined: {}", userType);
         return userType;
-    }
-
-    private User convertRequestDtoToUser(UserRequestDto userRequestDto) {
-        UserType userType = determineUserType(userRequestDto.getCpfCnpj());
-        userRequestDto.setPassword(passwordEncoder.encode(userRequestDto.getPassword()));
-        return new User(userRequestDto.getBalance(), userRequestDto.getCpfCnpj(),
-                userRequestDto.getEmail(), userRequestDto.getFullName(),
-                userRequestDto.getPassword(), userType.getCode());
     }
 }
