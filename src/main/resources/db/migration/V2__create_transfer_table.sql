@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS tb_transaction (
+CREATE TABLE IF NOT EXISTS tb_transfer (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     uuid UUID NOT NULL DEFAULT gen_random_uuid(),
     payer_id UUID NOT NULL,
