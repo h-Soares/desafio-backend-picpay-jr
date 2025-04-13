@@ -33,6 +33,16 @@ public class ExceptionHandlerCenter {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(getStandardError(HttpStatus.NOT_FOUND, e, request));
     }
 
+    @ExceptionHandler(NullPointerException.class)
+    public ResponseEntity<StandardError> nullPointerException(NullPointerException e, HttpServletRequest request) {
+        return ResponseEntity.internalServerError().body(getStandardError(HttpStatus.INTERNAL_SERVER_ERROR, e, request));
+    }
+
+    @ExceptionHandler(TransferException.class)
+    public ResponseEntity<StandardError> transferException(TransferException e, HttpServletRequest request) {
+        return ResponseEntity.unprocessableEntity().body(getStandardError(HttpStatus.UNPROCESSABLE_ENTITY, e, request));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<StandardRequestError> methodArgumentNotValid(MethodArgumentNotValidException e,
                                                                          HttpServletRequest request) {
@@ -42,11 +52,6 @@ public class ExceptionHandlerCenter {
         StandardRequestError insertDTOError = getStandardRequestError(HttpStatus.BAD_REQUEST,
                 request, errors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(insertDTOError);
-    }
-
-    @ExceptionHandler(NullPointerException.class)
-    public ResponseEntity<StandardError> nullPointerException(NullPointerException e, HttpServletRequest request) {
-        return ResponseEntity.internalServerError().body(getStandardError(HttpStatus.INTERNAL_SERVER_ERROR, e, request));
     }
 
     private StandardError getStandardError(HttpStatus hs, Exception e, HttpServletRequest request) {
@@ -64,7 +69,7 @@ public class ExceptionHandlerCenter {
 
     private StandardRequestError getStandardRequestError(HttpStatus httpStatus, HttpServletRequest request, List<String> errors) {
         if(logger.isWarnEnabled())
-            logger.warn(errors.toString());
+            logger.warn("WARN on request body: {}", errors);
 
         StandardRequestError insertDTOError = new StandardRequestError();
         insertDTOError.setTimestamp(Instant.now());
