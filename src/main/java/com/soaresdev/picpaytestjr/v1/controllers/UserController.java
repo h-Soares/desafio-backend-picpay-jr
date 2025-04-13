@@ -49,7 +49,7 @@ public class UserController {
     @Operation(description = "Get a paginated list of all users", method = "GET")
     @ApiResponse(responseCode = "200", description = "OK")
     @GetMapping(produces = "application/json")
-    public ResponseEntity<Page<UserResponseDto>> findAllUsers(@ParameterObject @PageableDefault(sort = "fullName", direction = Sort.Direction.ASC) Pageable pageable) {
+    public ResponseEntity<Page<UserResponseDto>> findAllUsers(@ParameterObject @PageableDefault(sort = {"fullName", "balance"}, direction = Sort.Direction.ASC) Pageable pageable) {
         return ResponseEntity.ok(userService.findAll(pageable));
     }
 
