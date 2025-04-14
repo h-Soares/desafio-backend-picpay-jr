@@ -52,7 +52,7 @@ public class UserService {
 
     private void validateOnDatabase(UserRequestDto userRequestDto) {
         logger.info("Validating user request on database...");
-        if(userRepository.existsByCpfCnpj(userRequestDto.getCpfCnpj()))
+        if(userRepository.existsByCpfCnpj(userRequestDto.getCpfCnpj().replaceAll("[./-]", "")))
             throw new EntityExistsException("User CPF/CNPJ already exists");
 
         if(userRepository.existsByEmail(userRequestDto.getEmail()))

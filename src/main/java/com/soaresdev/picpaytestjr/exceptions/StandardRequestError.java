@@ -52,4 +52,15 @@ public class StandardRequestError {
     public void setPath(String path) {
         this.path = path;
     }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("StandardRequestError{");
+        sb.append("errors=").append(errors);
+        sb.append(", path='").append(path).append('\'');
+        sb.append(", status=").append(status);
+        sb.append(", timestamp=").append(timestamp);
+        sb.append('}');
+        return sb.toString();
+    }
 }

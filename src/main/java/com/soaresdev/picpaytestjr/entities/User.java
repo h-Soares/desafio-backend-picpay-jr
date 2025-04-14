@@ -48,6 +48,15 @@ public class User {
         this.userTypeCode = userTypeCode;
     }
 
+    public User(Integer userTypeCode, String password, String fullName, String email, String cpfCnpj, BigDecimal balance) {
+        this.userTypeCode = userTypeCode;
+        this.password = password;
+        this.fullName = fullName;
+        this.email = email;
+        this.cpfCnpj = cpfCnpj;
+        this.balance = balance;
+    }
+
     public BigDecimal getBalance() {
         return balance;
     }

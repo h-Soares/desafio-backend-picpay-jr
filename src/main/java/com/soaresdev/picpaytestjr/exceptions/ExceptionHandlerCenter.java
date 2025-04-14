@@ -55,27 +55,29 @@ public class ExceptionHandlerCenter {
     }
 
     private StandardError getStandardError(HttpStatus hs, Exception e, HttpServletRequest request) {
-        if(logger.isWarnEnabled())
-            logger.warn(e.getMessage());
-
         StandardError standardError = new StandardError();
         standardError.setTimestamp(Instant.now());
         standardError.setStatus(hs.value());
         standardError.setError(e.getClass().getSimpleName());
         standardError.setMessage(e.getMessage());
         standardError.setPath(request.getRequestURI());
+
+        if(logger.isWarnEnabled())
+            logger.warn("Error: {}", standardError);
+
         return standardError;
     }
 
     private StandardRequestError getStandardRequestError(HttpStatus httpStatus, HttpServletRequest request, List<String> errors) {
-        if(logger.isWarnEnabled())
-            logger.warn("WARN on request body: {}", errors);
-
         StandardRequestError insertDTOError = new StandardRequestError();
         insertDTOError.setTimestamp(Instant.now());
         insertDTOError.setStatus(httpStatus.value());
         insertDTOError.setErrors(errors);
         insertDTOError.setPath(request.getRequestURI());
+
+        if(logger.isWarnEnabled())
+            logger.warn("Errors: {}", insertDTOError);
+
         return insertDTOError;
     }
 }

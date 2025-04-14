@@ -61,4 +61,16 @@ public class StandardError {
     public void setPath(String path) {
         this.path = path;
     }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("StandardError{");
+        sb.append("error='").append(error).append('\'');
+        sb.append(", timestamp=").append(timestamp);
+        sb.append(", status=").append(status);
+        sb.append(", message='").append(message).append('\'');
+        sb.append(", path='").append(path).append('\'');
+        sb.append('}');
+        return sb.toString();
+    }
 }
