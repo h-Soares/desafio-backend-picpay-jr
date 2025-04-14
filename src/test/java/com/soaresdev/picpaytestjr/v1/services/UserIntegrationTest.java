@@ -30,7 +30,7 @@ import static org.hamcrest.Matchers.*;
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class UserServiceTest {
+class UserIntegrationTest {
     private static final String URL_PATH = "/v1/user";
     private static final String POSTGRESQL_IMAGE = "postgres:17.4";
     private static final String VALID_CPF = "47776629911";
@@ -45,7 +45,7 @@ class UserServiceTest {
     @Autowired
     private UserRepository userRepository;
 
-    public UserServiceTest() {
+    public UserIntegrationTest() {
         this.userRequestDto = new UserRequestDto();
     }
 
