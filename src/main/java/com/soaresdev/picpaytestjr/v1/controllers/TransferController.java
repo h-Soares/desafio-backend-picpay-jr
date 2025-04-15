@@ -32,7 +32,8 @@ public class TransferController {
             @ApiResponse(responseCode = "204", description = "Success. No content", content = @Content),
             @ApiResponse(responseCode = "400", description = "Invalid body arguments", content = @Content(schema = @Schema(implementation = StandardRequestError.class))),
             @ApiResponse(responseCode = "404", description = "Entity not found", content = @Content(schema = @Schema(implementation = StandardError.class))),
-            @ApiResponse(responseCode = "422", description = "Something wrong occurred during the transfer", content = @Content(schema = @Schema(implementation = StandardError.class)))
+            @ApiResponse(responseCode = "422", description = "Something wrong occurred during the transfer", content = @Content(schema = @Schema(implementation = StandardError.class))),
+            @ApiResponse(responseCode = "504", description = "External API error", content = @Content(schema = @Schema(implementation = StandardError.class)))
     })
     @PostMapping(consumes = "application/json")
     public ResponseEntity<Void> transfer(@RequestBody @Valid TransferDto transferDto) {

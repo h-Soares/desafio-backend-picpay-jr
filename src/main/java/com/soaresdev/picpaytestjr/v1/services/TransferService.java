@@ -33,22 +33,23 @@ public class TransferService {
 
     @Transactional
     public void transfer(TransferDto transferDto) {
-        if(authorizationService.isAuthorized())
-            doTransfer(transferDto);
+        if(!authorizationService.isAuthorized())
+            throw new TransferException("Transfer not authorized");
+        doTransfer(transferDto);
     }
 
     private void doTransfer(TransferDto transferDto) {
         logger.info("Transfer started: {}...", transferDto);
-        User payer = getUserEntityByEmail(transferDto.payerEmail());
-        User payee = getUserEntityByEmail(transferDto.payeeEmail());
+        User payer = getUserEntityByEmail(transferDto.getPayerEmail());
+        User payee = getUserEntityByEmail(transferDto.getPayeeEmail());
 
-        validateTransfer(payer, payee, transferDto.amount());
+        validateTransfer(payer, payee, transferDto.getAmount());
 
-        payer.setBalance(payer.getBalance().subtract(transferDto.amount()));
-        payee.setBalance(payee.getBalance().add(transferDto.amount()));
+        payer.setBalance(payer.getBalance().subtract(transferDto.getAmount()));
+        payee.setBalance(payee.getBalance().add(transferDto.getAmount()));
         userRepository.saveAll(List.of(payer, payee));
 
-        transferRepository.save(new Transfer(payee, payer, Instant.now(), transferDto.amount()));
+        transferRepository.save(new Transfer(payee, payer, Instant.now(), transferDto.getAmount()));
 
         notificationService.notifyUser();
         logger.info("Transfer finished: {}", transferDto);

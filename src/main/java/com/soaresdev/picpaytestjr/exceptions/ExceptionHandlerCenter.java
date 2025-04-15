@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.HttpServerErrorException;
 import java.time.Instant;
 import java.util.List;
 
@@ -52,6 +53,11 @@ public class ExceptionHandlerCenter {
         StandardRequestError insertDTOError = getStandardRequestError(HttpStatus.BAD_REQUEST,
                 request, errors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(insertDTOError);
+    }
+
+    @ExceptionHandler(HttpServerErrorException.GatewayTimeout.class)
+    public ResponseEntity<StandardError> gatewayTimeout(HttpServerErrorException.GatewayTimeout e, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(getStandardError(HttpStatus.GATEWAY_TIMEOUT, e, request));
     }
 
     private StandardError getStandardError(HttpStatus hs, Exception e, HttpServletRequest request) {
