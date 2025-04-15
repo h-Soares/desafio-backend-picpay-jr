@@ -26,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.web.client.HttpServerErrorException;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -161,6 +162,11 @@ class TransferIntegrationTest {
                 body("error", equalTo(EntityNotFoundException.class.getSimpleName())).
                 body("message", equalTo("User not found")).
                 body("path",equalTo(URL_PATH));
+
+        User userCostumer = userRepository.findByEmail(userCostumerRequestDto.getEmail()).orElseThrow(EntityNotFoundException::new);
+        User userSeller = userRepository.findByEmail(userSellerRequestDto.getEmail()).orElseThrow(EntityNotFoundException::new);
+        assertEquals(0, userCostumer.getBalance().compareTo(userCostumerRequestDto.getBalance()));
+        assertEquals(0, userSeller.getBalance().compareTo(userSellerRequestDto.getBalance()));
     }
 
     @Test
@@ -262,6 +268,37 @@ class TransferIntegrationTest {
                 body("errors[1]", equalTo("payeeEmail: Invalid payee email")).
                 body("errors[2]", equalTo("payerEmail: Invalid payer email")).
                 body("path",equalTo(URL_PATH));
+    }
+
+    @Test
+    void shouldReturn504WhenTimeoutOnCalApi() throws JsonProcessingException {
+        initUserInstancesOnDatabase();
+
+        wireMockServer.stubFor(get(urlEqualTo("/api/v2/authorize")).
+                willReturn(aResponse().withStatus(HttpStatus.GATEWAY_TIMEOUT.value()).
+                        withHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)));
+
+        wireMockServer.stubFor(post(urlEqualTo("/api/v1/notify")).
+                willReturn(aResponse().withStatus(HttpStatus.OK.value())));
+
+        given().
+                contentType(ContentType.JSON).
+                body(objectMapper.writeValueAsString(transferDto)).
+        when().
+                post(URL_PATH).
+        then().
+                statusCode(HttpStatus.GATEWAY_TIMEOUT.value()).
+                contentType(ContentType.JSON).
+                body("timestamp", matchesPattern("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.\\d{9}Z")).
+                body("status", equalTo(HttpStatus.GATEWAY_TIMEOUT.value())).
+                body("error", equalTo(HttpServerErrorException.GatewayTimeout.class.getSimpleName())).
+                body("message", equalTo("504 Gateway Timeout: [no body]")).
+                body("path",equalTo(URL_PATH));
+
+        User userCostumer = userRepository.findByEmail(userCostumerRequestDto.getEmail()).orElseThrow(EntityNotFoundException::new);
+        User userSeller = userRepository.findByEmail(userSellerRequestDto.getEmail()).orElseThrow(EntityNotFoundException::new);
+        assertEquals(0, userCostumer.getBalance().compareTo(userCostumerRequestDto.getBalance()));
+        assertEquals(0, userSeller.getBalance().compareTo(userSellerRequestDto.getBalance()));
     }
 
     private void initUserInstancesOnDatabase() {
