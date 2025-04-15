@@ -271,7 +271,7 @@ class TransferIntegrationTest {
     }
 
     @Test
-    void shouldReturn504WhenTimeoutOnCalApi() throws JsonProcessingException {
+    void shouldReturn504WhenTimeoutOnCallApi() throws JsonProcessingException {
         initUserInstancesOnDatabase();
 
         wireMockServer.stubFor(get(urlEqualTo("/api/v2/authorize")).
