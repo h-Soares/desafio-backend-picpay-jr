@@ -11,6 +11,8 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -32,6 +34,9 @@ public class TransferService {
     }
 
     @Transactional
+    @Caching(evict = {@CacheEvict(value = "user-cache", key = "#transferDto.payerEmail"),
+            @CacheEvict(value = "user-cache", key = "#transferDto.payeeEmail"),
+            @CacheEvict(value = "users", allEntries = true)})
     public void transfer(TransferDto transferDto) {
         if(!authorizationService.isAuthorized())
             throw new TransferException("Transfer not authorized");

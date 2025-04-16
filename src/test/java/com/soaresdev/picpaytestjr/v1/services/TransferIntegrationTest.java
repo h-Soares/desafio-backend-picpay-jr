@@ -21,16 +21,20 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.HttpServerErrorException;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import java.math.BigDecimal;
+import java.util.Objects;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
@@ -44,6 +48,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class TransferIntegrationTest {
     private static final String URL_PATH = "/v1/transfer";
     private static final String POSTGRESQL_IMAGE = "postgres:17.4";
+    private static final String REDIS_IMAGE = "redis:7.4.2";
     private static final String VALID_CPF = "47776629911";
     private static final String VALID_CNPJ = "79610519000141";
     private static final String VALID_COSTUMER_EMAIL = "johndoe@testing.com";
@@ -63,6 +68,8 @@ class TransferIntegrationTest {
     private UserRepository userRepository;
     @Autowired
     private TransferRepository transferRepository;
+    @Autowired
+    private CacheManager cacheManager;
 
     public TransferIntegrationTest() {
         this.userCostumerRequestDto = new UserRequestDto();
@@ -82,12 +89,18 @@ class TransferIntegrationTest {
             .withUsername("testing_user")
             .withPassword("testing_password");
 
+    @Container
+    static GenericContainer<?> redis = new GenericContainer<>(REDIS_IMAGE).
+            withExposedPorts(6379);
+
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRE_SQL_CONTAINER::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRE_SQL_CONTAINER::getUsername);
         registry.add("spring.datasource.password", POSTGRE_SQL_CONTAINER::getPassword);
         registry.add("external.api.base-url", wireMockServer::baseUrl);
+        registry.add("spring.data.redis.host", redis::getHost);
+        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
     }
 
     @BeforeEach
@@ -96,12 +109,14 @@ class TransferIntegrationTest {
         transferRepository.deleteAll();
         userRepository.deleteAll();
         setupStandardTransfer();
+        cleanAllCaches();
     }
 
     @Test
     void shouldReturn204WhenTransfer() throws JsonProcessingException {
         initUserInstancesOnDatabase();
         setAuthorizationByExternalApis(validAuthorizeDto);
+        String standardFindAllRequestCacheKey = "page:0:size:10:sort:fullName: ASC,balance: ASC";
 
         given().
                 contentType(ContentType.JSON).
@@ -115,6 +130,9 @@ class TransferIntegrationTest {
         User userSeller = userRepository.findByEmail(userSellerRequestDto.getEmail()).orElseThrow(EntityNotFoundException::new);
         assertEquals(userCostumerRequestDto.getBalance().subtract(transferDto.getAmount()).stripTrailingZeros(), userCostumer.getBalance().stripTrailingZeros());
         assertEquals(userSellerRequestDto.getBalance().add(transferDto.getAmount()).stripTrailingZeros(), userSeller.getBalance().stripTrailingZeros());
+        assertNull(cacheManager.getCache("user-cache").get(userCostumer.getEmail()));
+        assertNull(cacheManager.getCache("user-cache").get(userSeller.getEmail()));
+        assertNull(cacheManager.getCache("users").get(standardFindAllRequestCacheKey));
     }
 
     @Test
@@ -331,5 +349,13 @@ class TransferIntegrationTest {
 
         wireMockServer.stubFor(post(urlEqualTo("/api/v1/notify")).
                 willReturn(aResponse().withStatus(HttpStatus.OK.value())));
+    }
+
+    private void cleanAllCaches() {
+        for (String name : cacheManager.getCacheNames()) {
+            Cache cache = cacheManager.getCache(name);
+            if (Objects.nonNull(cache))
+                cache.clear();
+        }
     }
 }

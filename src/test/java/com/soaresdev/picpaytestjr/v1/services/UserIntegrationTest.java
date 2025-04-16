@@ -14,18 +14,23 @@ import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -33,6 +38,7 @@ import static org.hamcrest.Matchers.*;
 class UserIntegrationTest {
     private static final String URL_PATH = "/v1/user";
     private static final String POSTGRESQL_IMAGE = "postgres:17.4";
+    private static final String REDIS_IMAGE = "redis:7.4.2";
     private static final String VALID_CPF = "47776629911";
     private static final String VALID_CNPJ = "79610519000141";
     private final UserRequestDto userRequestDto;
@@ -44,6 +50,8 @@ class UserIntegrationTest {
     private ObjectMapper objectMapper;
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private CacheManager cacheManager;
 
     public UserIntegrationTest() {
         this.userRequestDto = new UserRequestDto();
@@ -54,6 +62,7 @@ class UserIntegrationTest {
         RestAssured.port = port;
         userRepository.deleteAll();
         setupStandardUser();
+        cleanAllCaches();
     }
 
     @Container
@@ -62,11 +71,17 @@ class UserIntegrationTest {
             .withUsername("testing_user")
             .withPassword("testing_password");
 
+    @Container
+    static GenericContainer<?> redis = new GenericContainer<>(REDIS_IMAGE).
+            withExposedPorts(6379);
+
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRE_SQL_CONTAINER::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRE_SQL_CONTAINER::getUsername);
         registry.add("spring.datasource.password", POSTGRE_SQL_CONTAINER::getPassword);
+        registry.add("spring.data.redis.host", redis::getHost);
+        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
     }
 
     @Test
@@ -87,6 +102,11 @@ class UserIntegrationTest {
                 body("email",equalTo(userRequestDto.getEmail())).
                 body("balance.toString()",equalTo(userRequestDto.getBalance().stripTrailingZeros().toPlainString())).
                 header("Location", containsString(URL_PATH + "/" + userRequestDto.getEmail()));
+
+        assertThat(cacheManager.getCache("user-cache").get(userRequestDto.getEmail()).get()).
+                usingRecursiveComparison().ignoringFields("id", "userType", "password").
+                withComparatorForType(BigDecimal::compareTo, BigDecimal.class).
+                isEqualTo(userRequestDto);
     }
 
     @Test
@@ -109,6 +129,11 @@ class UserIntegrationTest {
                 body("email",equalTo(userRequestDto.getEmail())).
                 body("balance.toString()",equalTo(userRequestDto.getBalance().stripTrailingZeros().toPlainString())).
                 header("Location", containsString(URL_PATH + "/" + userRequestDto.getEmail()));
+
+        assertThat(cacheManager.getCache("user-cache").get(userRequestDto.getEmail()).get()).
+                usingRecursiveComparison().ignoringFields("id", "userType", "password").
+                withComparatorForType(BigDecimal::compareTo, BigDecimal.class).
+                isEqualTo(userRequestDto);
     }
 
     @Test
@@ -181,6 +206,7 @@ class UserIntegrationTest {
         UserRequestDto userRequestDtoTwo = new UserRequestDto(BigDecimal.TEN, VALID_CNPJ, "seller@testing.com", "The Test", "testing123");
         saveUserOnDatabase(userRequestDto);
         saveUserOnDatabase(userRequestDtoTwo);
+        String standardRequestCacheKey = "page:0:size:10:sort:fullName: ASC,balance: ASC";
 
         given().
                 get(URL_PATH).
@@ -200,6 +226,8 @@ class UserIntegrationTest {
                 body("content[1].cpfCnpj", equalTo(userRequestDtoTwo.getCpfCnpj())).
                 body("content[1].email",equalTo(userRequestDtoTwo.getEmail())).
                 body("content[1].balance",equalTo(userRequestDtoTwo.getBalance().floatValue()));
+
+        assertThat(cacheManager.getCache("users").get(standardRequestCacheKey)).isNotNull();
     }
 
     @Test
@@ -219,6 +247,11 @@ class UserIntegrationTest {
                 body("cpfCnpj", equalTo(userRequestDto.getCpfCnpj())).
                 body("email",equalTo(userRequestDto.getEmail())).
                 body("balance",equalTo(userRequestDto.getBalance().floatValue()));
+
+        assertThat(cacheManager.getCache("user-cache").get(userRequestDto.getEmail()).get()).
+                usingRecursiveComparison().ignoringFields("id", "userType", "password").
+                withComparatorForType(BigDecimal::compareTo, BigDecimal.class).
+                isEqualTo(userRequestDto);
     }
 
     @Test
@@ -262,5 +295,13 @@ class UserIntegrationTest {
         userRequestDto.setFullName("invalidFull!Name");
         userRequestDto.setPassword("invalidPassword");
         userRequestDto.setBalance(BigDecimal.ZERO);
+    }
+
+    private void cleanAllCaches() {
+        for (String name : cacheManager.getCacheNames()) {
+            Cache cache = cacheManager.getCache(name);
+            if (Objects.nonNull(cache))
+                cache.clear();
+        }
     }
 }

@@ -11,6 +11,10 @@ import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,6 +31,8 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    @Caching(put = {@CachePut(value = "user-cache", key = "#result.email")},
+            evict = {@CacheEvict(value = "users", allEntries = true)})
     public UserResponseDto createUser(UserRequestDto userRequestDto) {
         logger.info("Creating new user...");
         validateOnDatabase(userRequestDto);
@@ -37,11 +43,17 @@ public class UserService {
         return userResponseDto;
     }
 
+    @Cacheable(
+            value = "users",
+            key = "'page:' + #pageable.pageNumber + ':size:' + #pageable.pageSize + ':sort:' + #pageable.sort.toString()",
+            sync = true
+    )
     public Page<UserResponseDto> findAll(Pageable pageable) {
         logger.info("Finding all users...");
         return userRepository.findAll(pageable).map(UserResponseDto::new);
     }
 
+    @Cacheable(value = "user-cache", key = "#email")
     public UserResponseDto findUserByEmail(String email) {
         logger.info("Finding user by email: {}...", email);
         UserResponseDto user = userRepository.findByEmail(email).map(UserResponseDto::new).

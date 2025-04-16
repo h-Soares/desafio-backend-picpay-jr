@@ -2,11 +2,12 @@ package com.soaresdev.picpaytestjr.v1.dtos;
 
 import com.soaresdev.picpaytestjr.entities.User;
 import com.soaresdev.picpaytestjr.entities.enums.UserType;
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.UUID;
 
-public class UserResponseDto {
+public class UserResponseDto implements Serializable {
     private UUID id;
     private String fullName;
     private UserType userType;
