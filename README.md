@@ -92,9 +92,9 @@ POST /transfer
 Content-Type: application/json
 
 {
-  "value": 100.0,
-  "payer": 4,
-  "payee": 15
+  "amount": 100.0,
+  "payerEmail": payer@emailpayer.com,
+  "payeeEmail": payee@emailpayee.com
 }
 ```
 
