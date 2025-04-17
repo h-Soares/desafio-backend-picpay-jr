@@ -1,7 +1,7 @@
 # PicPay - Desafio de Programação
 
 [![Continuous Integration with GitHub Action](https://github.com/h-Soares/desafio-backend-picpay-jr/actions/workflows/continuous-integration.yml/badge.svg)](https://github.com/h-Soares/desafio-backend-picpay-jr/actions/workflows/continuous-integration.yml)
-[![Docker Hub Repo](https://img.shields.io/docker/pulls/hsoaress/desafio-backend-picpay-jr-img.svg)](https://hub.docker.com/repository/docker/hsoaress/desafio-backend-picpay-jr-img)
+[![Docker Hub Repo](https://img.shields.io/docker/pulls/hsoaress/picpay-test-jr-img.svg)](https://hub.docker.com/repository/docker/hsoaress/picpay-test-jr-img)
 
 ## 👨‍💻 Autor
 * <div style="display: flex; align-items: center;">
