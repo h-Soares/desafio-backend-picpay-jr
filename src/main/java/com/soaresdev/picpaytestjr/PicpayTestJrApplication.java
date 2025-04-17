@@ -8,9 +8,9 @@ import org.springframework.data.web.config.EnableSpringDataWebSupport;
 @SpringBootApplication
 @EnableSpringDataWebSupport(pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)
 @EnableCaching
-public class PicPayTestJrApplication {
+public class PicpayTestJrApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(PicPayTestJrApplication.class, args);
+        SpringApplication.run(PicpayTestJrApplication.class, args);
     }
 }

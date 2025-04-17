@@ -2,8 +2,7 @@ version: '3.8'
 
 services:
   app:
-    build: .
-    container_name: picpay-test-jr
+    image: hsoaress/picpay-test-jr-img:latest
     ports:
       - "8080:8080"
     depends_on:
