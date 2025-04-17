@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: picpay-test-jr
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+      - redis
+    environment:
+      POSTGRES_DB: testingdb
+      POSTGRES_USER: testinguser
+      POSTGRES_PASSWORD: testingpassword
+
+  db:
+    image: postgres:17.4
+    environment:
+      POSTGRES_DB: testingdb
+      POSTGRES_USER: testinguser
+      POSTGRES_PASSWORD: testingpassword
+    restart: always
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7.4.2
+    restart: always
+    ports:
+      - "6379:6379"
