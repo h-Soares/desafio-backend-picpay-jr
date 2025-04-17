@@ -1,87 +1,42 @@
 package com.soaresdev.picpaytestjr.v1.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soaresdev.picpaytestjr.entities.User;
 import com.soaresdev.picpaytestjr.entities.enums.UserType;
 import com.soaresdev.picpaytestjr.repositories.UserRepository;
 import com.soaresdev.picpaytestjr.v1.dtos.UserRequestDto;
-import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.http.HttpStatus;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Testcontainers
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class UserIntegrationTest {
+class UserIntegrationTest extends AbstractIntegrationTest {
     private static final String URL_PATH = "/v1/user";
-    private static final String POSTGRESQL_IMAGE = "postgres:17.4";
-    private static final String REDIS_IMAGE = "redis:7.4.2";
     private static final String VALID_CPF = "47776629911";
     private static final String VALID_CNPJ = "79610519000141";
     private final UserRequestDto userRequestDto;
-
-    @LocalServerPort
-    private int port;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private CacheManager cacheManager;
 
     public UserIntegrationTest() {
         this.userRequestDto = new UserRequestDto();
     }
 
+    @Autowired
+    private UserRepository userRepository;
+
     @BeforeEach
     void setup() {
-        RestAssured.port = port;
         userRepository.deleteAll();
         setupStandardUser();
-        cleanAllCaches();
-    }
-
-    @Container
-    private static final PostgreSQLContainer<?> POSTGRE_SQL_CONTAINER = new PostgreSQLContainer<>(POSTGRESQL_IMAGE)
-            .withDatabaseName("testing")
-            .withUsername("testing_user")
-            .withPassword("testing_password");
-
-    @Container
-    static GenericContainer<?> redis = new GenericContainer<>(REDIS_IMAGE).
-            withExposedPorts(6379);
-
-    @DynamicPropertySource
-    static void overrideProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRE_SQL_CONTAINER::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRE_SQL_CONTAINER::getUsername);
-        registry.add("spring.datasource.password", POSTGRE_SQL_CONTAINER::getPassword);
-        registry.add("spring.data.redis.host", redis::getHost);
-        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
     }
 
     @Test
@@ -295,13 +250,5 @@ class UserIntegrationTest {
         userRequestDto.setFullName("invalidFull!Name");
         userRequestDto.setPassword("invalidPassword");
         userRequestDto.setBalance(BigDecimal.ZERO);
-    }
-
-    private void cleanAllCaches() {
-        for (String name : cacheManager.getCacheNames()) {
-            Cache cache = cacheManager.getCache(name);
-            if (Objects.nonNull(cache))
-                cache.clear();
-        }
     }
 }

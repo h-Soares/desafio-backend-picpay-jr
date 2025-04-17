@@ -1,8 +1,6 @@
 package com.soaresdev.picpaytestjr.v1.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.soaresdev.picpaytestjr.entities.User;
 import com.soaresdev.picpaytestjr.entities.enums.UserType;
 import com.soaresdev.picpaytestjr.exceptions.TransferException;
@@ -12,43 +10,25 @@ import com.soaresdev.picpaytestjr.v1.dtos.TransferDto;
 import com.soaresdev.picpaytestjr.v1.dtos.UserRequestDto;
 import com.soaresdev.picpaytestjr.v1.dtos.externalApisDto.authorize.AuthorizeDto;
 import com.soaresdev.picpaytestjr.v1.dtos.externalApisDto.authorize.DataDto;
-import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.HttpServerErrorException;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import java.math.BigDecimal;
-import java.util.Objects;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.junit.jupiter.api.Assertions.*;
 
-@Testcontainers
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class TransferIntegrationTest {
+class TransferIntegrationTest extends AbstractIntegrationTest {
     private static final String URL_PATH = "/v1/transfer";
-    private static final String POSTGRESQL_IMAGE = "postgres:17.4";
-    private static final String REDIS_IMAGE = "redis:7.4.2";
     private static final String VALID_CPF = "47776629911";
     private static final String VALID_CNPJ = "79610519000141";
     private static final String VALID_COSTUMER_EMAIL = "johndoe@testing.com";
@@ -59,17 +39,10 @@ class TransferIntegrationTest {
     private final AuthorizeDto validAuthorizeDto;
     private final AuthorizeDto invalidAuthorizeDto;
 
-    @LocalServerPort
-    private int port;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-    @Autowired
-    private UserRepository userRepository;
     @Autowired
     private TransferRepository transferRepository;
     @Autowired
-    private CacheManager cacheManager;
+    private UserRepository userRepository;
 
     public TransferIntegrationTest() {
         this.userCostumerRequestDto = new UserRequestDto();
@@ -79,37 +52,11 @@ class TransferIntegrationTest {
         this.invalidAuthorizeDto = new AuthorizeDto("fail", new DataDto(Boolean.FALSE));
     }
 
-    @RegisterExtension
-    static WireMockExtension wireMockServer = WireMockExtension.newInstance().
-            options(wireMockConfig().dynamicPort()).build();
-
-    @Container
-    private static final PostgreSQLContainer<?> POSTGRE_SQL_CONTAINER = new PostgreSQLContainer<>(POSTGRESQL_IMAGE)
-            .withDatabaseName("testing")
-            .withUsername("testing_user")
-            .withPassword("testing_password");
-
-    @Container
-    static GenericContainer<?> redis = new GenericContainer<>(REDIS_IMAGE).
-            withExposedPorts(6379);
-
-    @DynamicPropertySource
-    static void overrideProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRE_SQL_CONTAINER::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRE_SQL_CONTAINER::getUsername);
-        registry.add("spring.datasource.password", POSTGRE_SQL_CONTAINER::getPassword);
-        registry.add("external.api.base-url", wireMockServer::baseUrl);
-        registry.add("spring.data.redis.host", redis::getHost);
-        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
-    }
-
     @BeforeEach
     void setup() {
-        RestAssured.port = port;
         transferRepository.deleteAll();
         userRepository.deleteAll();
         setupStandardTransfer();
-        cleanAllCaches();
     }
 
     @Test
@@ -292,11 +239,11 @@ class TransferIntegrationTest {
     void shouldReturn504WhenTimeoutOnCallApi() throws JsonProcessingException {
         initUserInstancesOnDatabase();
 
-        wireMockServer.stubFor(get(urlEqualTo("/api/v2/authorize")).
+        WIREMOCK_SERVER.stubFor(get(urlEqualTo("/api/v2/authorize")).
                 willReturn(aResponse().withStatus(HttpStatus.GATEWAY_TIMEOUT.value()).
                         withHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)));
 
-        wireMockServer.stubFor(post(urlEqualTo("/api/v1/notify")).
+        WIREMOCK_SERVER.stubFor(post(urlEqualTo("/api/v1/notify")).
                 willReturn(aResponse().withStatus(HttpStatus.OK.value())));
 
         given().
@@ -342,20 +289,12 @@ class TransferIntegrationTest {
     }
 
     private void setAuthorizationByExternalApis(AuthorizeDto validAuthorizeDto) throws JsonProcessingException {
-        wireMockServer.stubFor(get(urlEqualTo("/api/v2/authorize")).
+        WIREMOCK_SERVER.stubFor(get(urlEqualTo("/api/v2/authorize")).
                 willReturn(aResponse().withStatus(HttpStatus.OK.value()).
                         withHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE).
                         withBody(objectMapper.writeValueAsString(validAuthorizeDto))));
 
-        wireMockServer.stubFor(post(urlEqualTo("/api/v1/notify")).
+        WIREMOCK_SERVER.stubFor(post(urlEqualTo("/api/v1/notify")).
                 willReturn(aResponse().withStatus(HttpStatus.OK.value())));
-    }
-
-    private void cleanAllCaches() {
-        for (String name : cacheManager.getCacheNames()) {
-            Cache cache = cacheManager.getCache(name);
-            if (Objects.nonNull(cache))
-                cache.clear();
-        }
     }
 }
